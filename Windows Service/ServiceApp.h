@@ -51,6 +51,7 @@
 #include <Windows.h>
 
 #define SERVICE_NAME L"Safy"
+#define EVENT_NAME	L"Global\\SAFY"
 
 class CServiceApp
 {

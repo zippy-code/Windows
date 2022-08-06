@@ -1,9 +1,11 @@
 #include "ServiceApp.h"
+#include "DebugLog.h"
 #include <atlbase.h>
 
 HANDLE ghSvcStopEvent = NULL;
 SERVICE_STATUS			gssStatus;
 SERVICE_STATUS_HANDLE	gsshServiceStatus;
+CDebugLog debugLog;
 
 CServiceApp::CServiceApp()
 {
@@ -92,6 +94,7 @@ void WINAPI CServiceApp::ServiceMain(DWORD argc, LPTSTR argv[])
 		return;
 
 	/////// service app 기능 함수 구현
+	debugLog.PutLog(_F_, LOG_LEVEL_NOTICE, _T("Start Service Main."));
 	ServiceSpecific(argc, argv);
 	///////
 
@@ -207,13 +210,16 @@ int CServiceApp::ServiceSpecific(int argc, LPTSTR argv[])
 {
 	DWORD dwRet = ERROR_SUCCESS;
 	
-	ghSvcStopEvent = CreateEvent(NULL,		// default security attributes
-		TRUE,								// manual reset event
-		FALSE,								// not signaled
-		NULL);								// no name
+	//ghSvcStopEvent = CreateEvent(NULL,		// default security attributes
+	//	TRUE,								// manual reset event
+	//	FALSE,								// not signaled
+	//	EVENT_NAME);								// no name
+
+	ghSvcStopEvent = OpenEvent(EVENT_MODIFY_STATE, FALSE, EVENT_NAME);
 
 	if (NULL == ghSvcStopEvent)
 	{
+		debugLog.PutLog(_F_, LOG_LEVEL_ERROR, _T("Failed CreateEvent() in ServiceSpecific %d"), GetLastError());
 		dwRet = GetLastError();
 		ReportStatusToSCMgr(SERVICE_STOPPED, dwRet, 0);
 		return dwRet;
@@ -223,20 +229,27 @@ int CServiceApp::ServiceSpecific(int argc, LPTSTR argv[])
 	
 	while (TRUE)
 	{
+		debugLog.PutLog(_F_, LOG_LEVEL_NOTICE, _T("While True in ServiceSpecific."));
 		WaitForSingleObject(ghSvcStopEvent, INFINITE);
 
 		ReportStatusToSCMgr(SERVICE_STOPPED, NO_ERROR, 0);
-		return dwRet;
+		debugLog.PutLog(_F_, LOG_LEVEL_NOTICE, _T("break int ServiceSpecific."));
+		break;
 	}
+
+	if (NULL != ghSvcStopEvent)
+		CloseHandle(ghSvcStopEvent);
+
+	return dwRet;
 }
 
 DWORD CServiceApp::Run()
 {
 	DWORD dwRet = ERROR_SUCCESS;
-
+	debugLog.PutLog(_F_, LOG_LEVEL_NOTICE, _T("Start Run."));
 	SERVICE_TABLE_ENTRY DispatchTable[] = 
 	{
-		{SERVICE_NAME, ServiceMain},
+		{(LPWSTR)SERVICE_NAME, ServiceMain},
 		{NULL, NULL}
 	};
 
